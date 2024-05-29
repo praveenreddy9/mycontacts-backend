@@ -7,14 +7,14 @@ const Contact = require("../models/contactModel");
 //@access public
 const getContacts = asyncHandler(async (req,res)=>{
     // res.send("Get all contacts");
-    const contacts = await Contact.find();
+    const contacts = await Contact.find({user_id: req.user.id});
     res.status(200).json({message:"Get all contacts list",data:contacts}); 
 });
 
 
 //@desc Create contact
 //@routes POST /api/contacts
-//@access public
+//@access private
 const createContact = asyncHandler(async (req,res)=>{
     console.log('Create contact details===>',req.body);
     const { name, email, phone} = req.body;
@@ -26,7 +26,8 @@ const createContact = asyncHandler(async (req,res)=>{
     const contact = await Contact.create({
         name,
         email,
-        phone
+        phone,
+        user_id:req.user.id
     });
     // var tempData = new Schema({'name':String,'email':String,'mobile':String},{strict:true});
     // var modelCreate = mongoose.model('testUsersList',tempData);
@@ -37,7 +38,7 @@ const createContact = asyncHandler(async (req,res)=>{
 
 //@desc get contact based on id
 //@routes GET /api/contacts/:id
-//@access public
+//@access private
 const getContact = asyncHandler(async (req,res)=>{
     const contact = await Contact.findById(req.params.id);
     if(!contact){
@@ -50,13 +51,18 @@ const getContact = asyncHandler(async (req,res)=>{
 
 //@desc update contact based on id
 //@routes PUT /api/contacts/:id
-//@access public
+//@access private
 const updateContact = asyncHandler(async (req,res)=>{
     const contact = await Contact.findById(req.params.id);
     if(!contact){
         res.status(404);
         throw new Error("Contact details Not found");
     };
+
+    if(contact.user_id.toString() !== req.user.id){
+        res.status(403);
+        throw new Error("You don't have acess edit other user contacts");
+    }
 
     const updatedContact = await Contact.findByIdAndUpdate(
         req.params.id,
@@ -68,15 +74,19 @@ const updateContact = asyncHandler(async (req,res)=>{
   
 //@desc delete contact based on id
 //@routes DELETE /api/contacts/:id
-//@access public
+//@access private
 const deleteContact = asyncHandler(async (req,res)=>{
     const contact = await Contact.findById(req.params.id);
     if(!contact){
         res.status(404);
         throw new Error("Contact details Not found");
     };
-    await Contact.remove();
-
+    if(contact.user_id.toString() !== req.user.id){
+        res.status(403);
+        throw new Error("You don't have acess delete other user contacts");
+    }
+    // await Contact.remove(); //to remove all the contacts list
+    await Contact.deleteOne({_id: req.params.id});
     res.status(200).json({message:`Delete contact for ${req.params.id}`,data:contact}); 
 });
 
